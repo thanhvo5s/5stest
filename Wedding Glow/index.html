@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Glow</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        .container {
+            position: absolute;
+            text-align: center;
+            padding: 30px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.4);
+            z-index: 2;
+        }
+        h1 {
+            color: #ffffff;
+            font-size: 3.5rem;
+            margin-bottom: 15px;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+            font-family: 'Great Vibes', cursive;
+        }
+        .message {
+            color: #ffffff;
+            font-size: 2rem;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+            font-family: 'Dancing Script', cursive;
+            opacity: 0;
+            animation: fadeInOut 5s infinite;
+        }
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+        .wedding-btn {
+            padding: 15px 40px;
+            font-size: 1.3rem;
+            color: #fff;
+            background: linear-gradient(45deg, #ff4d94, #ffd700);
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin: 10px;
+        }
+        .wedding-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 77, 148, 0.7);
+        }
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&Dancing+Script&display=swap');
+    </style>
+</head>
+<body>
+    <canvas id="weddingCanvas"></canvas>
+    <div class="container">
+        <h1>Michael & Rhonda</h1>
+        <p class="message">Happy Wedding</p>
+		<!--
+        <button class="wedding-btn" onclick="increaseFirework()">Tăng pháo hoa</button>
+        <button class="wedding-btn" onclick="changeTheme()">Đổi chủ đề</button>
+		-->
+    </div>
+
+    <script>
+        const canvas = document.getElementById('weddingCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Cập nhật kích thước canvas
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Biến điều khiển
+        let particles = [];
+        let hearts = [];
+        let themeColors = [
+            { gradient: ['#ff4d94', '#ffd700'], hue: 330 }, // Hồng - Vàng
+            { gradient: ['#00d4ff', '#ff00cc'], hue: 200 }, // Cyan - Hồng
+            { gradient: ['#7b00ff', '#00ff99'], hue: 270 }  // Tím - Xanh
+        ];
+        let themeIndex = 0;
+        let fireworkCount = 10;
+        let lastFireworkTime = 0;
+        const fireworkInterval = 100;
+
+        // Slide ảnh
+        const images = [
+            'https://images.unsplash.com/photo-1519741497674-611481863552?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80',
+            'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80',
+            'https://images.unsplash.com/photo-1561571994-3d04da35b098?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80',
+			'https://cdn.prod.website-files.com/61dc1708ea98aa46622ce24a/662f9219298c480cb515da90_Best%20Flowers%20For%20Wedding.webp',
+			'https://abia.com.au/abia-admin/ckfinder/userfiles/images/complete-guide-to-wedding-flowers-Willow-Bud-Perwillowen-photo-@trentandjessie.webp',
+			
+			'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ6H4ZOM4lLPakpfID0gr98_AJG6Hrp5Q0UZQ&s',
+			'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR3L1KtIvHPe-kobfNdut6smlqNfioc7iDp6Q&s',
+			'https://cdn.prod.website-files.com/61dc1708ea98aa46622ce24a/6619a5b3b2c99f370dfae53a_Most_Popular_Wedding_Flower.webp',
+			'https://topknottiaras.co.uk/cdn/shop/products/Peach_Bridal_Bouquet_Artificial_Wedding_Flowers_Wedding_Bouquet_FL27_1_1200x1200.jpg?v=1681031091',
+			'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ_yMHE-pdZNTgWXRlC6SffX_Wx2KbgiqApQg&s'
+        ];
+        let imageObjects = [];
+        let activeImages = [];
+        let lastImageTime = 0;
+        const imageInterval = 6000; // Ảnh mới mỗi 3 giây
+
+        // Thông số tùy chỉnh tốc độ ảnh (bạn có thể thay đổi)
+        const imageParams = {
+            scaleSpeed: 0.01, // Tốc độ phóng to (0.1 = chậm, 0.5 = nhanh)
+            slideSpeed: 0.001, // Tốc độ trượt (0.05 = chậm, 0.2 = nhanh)
+            rotateSpeed: 0.001, // Tốc độ xoay (0.05 = chậm, 0.3 = nhanh)
+            fadeDuration: { // Thời gian tồn tại ảnh (giây)
+                min: 8, // Tối thiểu
+                max: 10  // Tối đa
+            }
+        };
+
+        // Tải ảnh
+        images.forEach(src => {
+            const img = new Image();
+            img.src = src;
+            img.onload = () => imageObjects.push(img);
+        });
+
+        // Lớp SlideImage
+        class SlideImage {
+            constructor(img, isLeft) {
+                this.img = img;
+                // Vị trí: trái hoặc phải container
+                this.x = isLeft ? canvas.width * 0.25 : canvas.width * 0.75; // Trái: 25%, Phải: 75%
+                this.y = canvas.height * (0.3 + Math.random() * 0.4); // Y ngẫu nhiên 30%-70%
+                
+                // Ngẫu nhiên hiệu ứng
+                const effectType = Math.floor(Math.random() * 4);
+                this.effectType = effectType;
+                this.startTime = Date.now();
+                this.duration = imageParams.fadeDuration.min + Math.random() * (imageParams.fadeDuration.max - imageParams.fadeDuration.min);
+                
+                switch (effectType) {
+                    case 0: // Phóng to và mờ
+                        this.scale = 0.1;
+                        this.opacity = 1;
+                        this.rotation = 0;
+                        break;
+                    case 1: // Trượt từ cạnh
+                        this.scale = 0.3;
+                        this.opacity = 1;
+                        this.x = isLeft ? -canvas.width * 0.2 : canvas.width * 1.2;
+                        this.targetX = isLeft ? canvas.width * 0.25 : canvas.width * 0.75;
+                        this.rotation = Math.random() * 0.5 - 0.25;
+                        break;
+                    case 2: // Xoay và mờ
+                        this.scale = 0.2;
+                        this.opacity = 1;
+                        this.rotation = Math.random() * Math.PI;
+                        break;
+                    case 3: // Phóng to lớn và mờ chậm
+                        this.scale = 0.05;
+                        this.opacity = 1;
+                        this.rotation = Math.random() * 0.3;
+                        break;
+                }
+            }
+
+            update() {
+                const elapsed = (Date.now() - this.startTime) / 1000;
+                switch (this.effectType) {
+                    case 0: // Phóng to và mờ
+                        this.scale += imageParams.scaleSpeed * elapsed;
+                        this.opacity = 1 - elapsed / this.duration;
+                        this.rotation += imageParams.rotateSpeed;
+                        break;
+                    case 1: // Trượt từ cạnh
+                        this.x += (this.targetX - this.x) * imageParams.slideSpeed;
+                        this.opacity = 1 - elapsed / this.duration;
+                        this.scale += imageParams.scaleSpeed * 0.5 * elapsed;
+                        break;
+                    case 2: // Xoay và mờ
+                        this.scale += imageParams.scaleSpeed * 0.7 * elapsed;
+                        this.opacity = 1 - elapsed / this.duration;
+                        this.rotation += imageParams.rotateSpeed * 2;
+                        break;
+                    case 3: // Phóng to lớn và mờ chậm
+                        this.scale += imageParams.scaleSpeed * 1.2 * elapsed;
+                        this.opacity = 1 - elapsed / this.duration;
+                        this.rotation += imageParams.rotateSpeed * 0.5;
+                        break;
+                }
+                if (elapsed > this.duration) return false;
+                return true;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.globalAlpha = this.opacity;
+                const aspectRatio = this.img.width / this.img.height;
+                const width = canvas.width * 0.25 * this.scale;
+                const height = width / aspectRatio;
+                ctx.drawImage(this.img, -width / 2, -height / 2, width, height);
+                ctx.globalAlpha = 1;
+                ctx.restore();
+            }
+        }
+
+        // Lớp Particle (pháo hoa)
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 4 + 2;
+                this.speedX = (Math.random() - 0.5) * 10;
+                this.speedY = (Math.random() - 0.5) * 10;
+                this.opacity = 1;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.opacity -= 0.02;
+                if (this.opacity <= 0) return false;
+                return true;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${themeColors[themeIndex].hue}, 100%, 70%, ${this.opacity})`;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = `hsl(${themeColors[themeIndex].hue}, 100%, 50%)`;
+                ctx.fill();
+            }
+        }
+
+        // Lớp Heart (trái tim)
+        class Heart {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 20 + 10;
+                this.opacity = 1;
+                this.speedY = -2;
+            }
+
+            update() {
+                this.y += this.speedY;
+                this.opacity -= 0.015;
+                if (this.opacity <= 0) return false;
+                return true;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.scale(1, 1);
+                ctx.beginPath();
+                ctx.moveTo(0, this.size * 0.3);
+                for (let i = 0; i < Math.PI * 2; i += 0.01) {
+                    const x = this.size * 0.5 * Math.sin(i) * Math.sin(i) * Math.sin(i);
+                    const y = -this.size * 0.5 * (0.8 * Math.cos(i) - 0.2 * Math.cos(2 * i) - 0.1 * Math.cos(3 * i) - 0.05 * Math.cos(4 * i));
+                    ctx.lineTo(x, y);
+                }
+                ctx.fillStyle = `hsla(${themeColors[themeIndex].hue}, 100%, 70%, ${this.opacity})`;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = `hsl(${themeColors[themeIndex].hue}, 100%, 50%)`;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Tạo pháo hoa tự động
+        function createFirework() {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            for (let i = 0; i < fireworkCount; i++) {
+                particles.push(new Particle(x, y));
+            }
+            hearts.push(new Heart(x, y));
+        }
+
+        // Tăng lượng pháo hoa
+        function increaseFirework() {
+            fireworkCount += 5;
+            if (fireworkCount > 30) fireworkCount = 30;
+        }
+
+        // Đổi chủ đề màu
+        function changeTheme() {
+            themeIndex = (themeIndex + 1) % themeColors.length;
+        }
+
+        // Vẽ sân khấu
+        function animateWedding() {
+            // Nền gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, themeColors[themeIndex].gradient[0]);
+            gradient.addColorStop(1, themeColors[themeIndex].gradient[1]);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Vẽ ảnh slide (cả hai bên)
+            const now = Date.now();
+            if (imageObjects.length > 0 && now - lastImageTime >= imageInterval) {
+                const randomIndexLeft = Math.floor(Math.random() * imageObjects.length);
+                const randomIndexRight = Math.floor(Math.random() * imageObjects.length);
+                activeImages.push(new SlideImage(imageObjects[randomIndexLeft], true)); // Trái
+                activeImages.push(new SlideImage(imageObjects[randomIndexRight], false)); // Phải
+                lastImageTime = now;
+            }
+            activeImages = activeImages.filter(img => img.update());
+            activeImages.forEach(img => img.draw());
+
+            // Vẽ dải ánh sáng
+            /*for (let x = 0; x < canvas.width; x += 20) {
+                const height = (Math.sin(x * 0.01 + Date.now() * 0.002) * 0.5 + 0.5) * canvas.height * 0.3;
+                ctx.beginPath();
+                ctx.moveTo(x, canvas.height);
+                ctx.lineTo(x, canvas.height - height);
+                ctx.strokeStyle = `hsla(${themeColors[themeIndex].hue}, 100%, 70%, 0.6)`;
+                ctx.lineWidth = 10;
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = `hsl(${themeColors[themeIndex].hue}, 100%, 50%)`;
+                ctx.stroke();
+            }*/
+
+            // Tạo pháo hoa liên tục
+            if (now - lastFireworkTime >= fireworkInterval) {
+                createFirework();
+                lastFireworkTime = now;
+            }
+
+            // Cập nhật và vẽ hạt
+            particles = particles.filter(p => p.update());
+            particles.forEach(p => p.draw());
+
+            // Cập nhật và vẽ trái tim
+            hearts = hearts.filter(h => h.update());
+            hearts.forEach(h => h.draw());
+
+            requestAnimationFrame(animateWedding);
+        }
+
+        // Xử lý thay đổi kích thước cửa sổ
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Bắt đầu animation
+        animateWedding();
+    </script>
+</body>
+</html>
